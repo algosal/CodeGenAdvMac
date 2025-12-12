@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <BundleResource Include="Resources/AppIcon/appicon.svg" />
+    <BundleResource Include="Resources/AppIcon/appiconfg.svg" />
+    <BundleResource Include="Resources/Fonts/OpenSans-Regular.ttf" />
+    <BundleResource Include="Resources/Fonts/OpenSans-Semibold.ttf" />
+    <BundleResource Include="Resources/Images/dotnet_bot.png" />
+    <BundleResource Include="Resources/Raw/AboutAssets.txt" />
+    <BundleResource Include="Resources/Splash/splash.svg" />
+    <BundleResource Include="Resources/Styles/Colors.xaml" />
+    <BundleResource Include="Resources/Styles/Styles.xaml" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <BundleResource Include="/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenApp/obj/Release/net8.0-maccatalyst18.0/resizetizer/r/Resources/dotnet_bot.png" />
+    <BundleResource Include="obj/Release/net8.0-maccatalyst18.0/resizetizer/f/OpenSans-Regular.ttf" />
+    <BundleResource Include="obj/Release/net8.0-maccatalyst18.0/resizetizer/f/OpenSans-Semibold.ttf" />
+  </ItemGroup>
+</Project>
