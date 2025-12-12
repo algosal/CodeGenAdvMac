@@ -1,0 +1,48 @@
+############################
+# OS / Editor junk
+############################
+.DS_Store
+*.swp
+*.swo
+
+.vscode/
+.idea/
+*.user
+*.userprefs
+*.suo
+
+############################
+# .NET / MAUI build output
+############################
+
+# Build directories
+[Bb]in/
+[Oo]bj/
+
+# VS build logs / caches
+*.cache
+*.log
+*.vspscc
+*.vssscc
+
+# NuGet
+*.nupkg
+packages/
+.nuget/
+project.lock.json
+project.fragment.lock.json
+
+# Rider / ReSharper
+_ReSharper*/
+*.DotSettings.user
+
+############################
+# MacCatalyst AOT / native output
+############################
+# These all live under obj/ but listed for clarity; obj/ above already catches them.
+# Keeping in case you ever need to tweak patterns:
+# obj/**/nativelibraries/
+# obj/**/stripped/
+# obj/**/ref/
+# obj/**/refint/
+# obj/**/resourcestamps/
