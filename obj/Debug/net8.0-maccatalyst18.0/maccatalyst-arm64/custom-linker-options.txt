@@ -5,7 +5,7 @@ AreAnyAssembliesTrimmed=false
 				AOTOutputDirectory=obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/nativelibraries/aot-output/
 				DedupAssembly=obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/aot-instances.dll
 				AppBundleManifestPath=bin/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/CodeGenAdv.app/Contents/Info.plist
-				CacheDirectory=/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv/obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/linker-cache
+				CacheDirectory=/Users/salmansaeed/vscode/CodeGenAdv/obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/linker-cache
 				
 				Debug=true
 				DeploymentTarget=18.0
@@ -185,7 +185,7 @@ FrameworkAssembly=System.Private.CoreLib
 				IntermediateLinkDir=obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/linked/
 				InvariantGlobalization=false
 				HybridGlobalization=false
-				ItemsDirectory=/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv/obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/linker-items
+				ItemsDirectory=/Users/salmansaeed/vscode/CodeGenAdv/obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/linker-items
 				IsAppExtension=false
 				IsSimulatorBuild=False
 				LibMonoLinkMode=static

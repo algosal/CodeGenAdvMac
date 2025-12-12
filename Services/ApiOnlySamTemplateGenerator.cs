@@ -3,262 +3,236 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace CodeGenApp.Services;
-
-public record ApiPack(
-    string PackName,
-    string BasePath,
-    string CreateArn,
-    string GetListArn,
-    string GetOneArn,
-    string UpdateDeleteArn,
-    string DeletePermanentArn);
-
-public interface IApiOnlySamTemplateGenerator
+namespace CodeGenApp.Services
 {
-    string Generate(string apiLogicalName, string stageName, string authorizerArn, List<ApiPack> packs);
-}
-
-public class ApiOnlySamTemplateGenerator : IApiOnlySamTemplateGenerator
-{
-    public string Generate(string apiLogicalName, string stageName, string authorizerArn, List<ApiPack> packs)
+    // ------------------------------------------------
+    // Model used by MainPage.xaml.cs
+    // ------------------------------------------------
+    public class ParsedPack
     {
-        if (string.IsNullOrWhiteSpace(apiLogicalName)) apiLogicalName = "AlbaGoldApi";
-        if (string.IsNullOrWhiteSpace(stageName)) stageName = "prod";
+        public string Title { get; set; } = "";
 
-        // Normalize
-        apiLogicalName = SafeLogicalId(apiLogicalName);
-        stageName = stageName.Trim();
+        // "Real name" you want: vendors, stores, corporates, etc.
+        // MainPage.xaml.cs is already referencing this.
+        public string ResourceName { get; set; } = "";
 
-        // Swagger (REST API v1)
-        var swagger = BuildSwagger(stageName, authorizerArn, packs);
+        // Kept for backward compatibility if older code is still setting BasePath.
+        // Example: /vendors
+        public string BasePath { get; set; } = "";
 
-        // Lambda permissions for ALL lambdas referenced
-        var perms = BuildLambdaPermissions(apiLogicalName, stageName, authorizerArn, packs);
+        public string CreateArn { get; set; } = "";
+        public string GetListArn { get; set; } = "";
+        public string GetOneArn { get; set; } = "";
+        public string UpdateDeleteArn { get; set; } = "";
+        public string DeletePermanentArn { get; set; } = "";
 
-        var sb = new StringBuilder();
-        sb.AppendLine("AWSTemplateFormatVersion: '2010-09-09'");
-        sb.AppendLine("Transform: AWS::Serverless-2016-10-31");
-        sb.AppendLine("Description: API-only SAM stack (existing Lambdas) with mandatory Lambda Authorizer");
-        sb.AppendLine();
-        sb.AppendLine("Resources:");
-        sb.AppendLine($"  {apiLogicalName}:");
-        sb.AppendLine("    Type: AWS::Serverless::Api");
-        sb.AppendLine("    Properties:");
-        sb.AppendLine($"      Name: {apiLogicalName}-RestApi");
-        sb.AppendLine($"      StageName: {stageName}");
-        sb.AppendLine("      Cors:");
-        sb.AppendLine("        AllowMethods: \"'GET,POST,PUT,DELETE,OPTIONS'\"");
-        sb.AppendLine("        AllowHeaders: \"'Content-Type,Authorization,X-Requested-With'\"");
-        sb.AppendLine("        AllowOrigin: \"'*'\"");
-        sb.AppendLine("      DefinitionBody:");
-        sb.Append(swagger);
-
-        sb.AppendLine();
-        sb.AppendLine(perms);
-
-        sb.AppendLine();
-        sb.AppendLine("Outputs:");
-        sb.AppendLine($"  {apiLogicalName}ApiUrl:");
-        sb.AppendLine("    Description: Base URL for the REST API");
-        sb.AppendLine($"    Value: !Sub 'https://${{{apiLogicalName}}}.execute-api.${{AWS::Region}}.amazonaws.com/{stageName}'");
-
-        return sb.ToString();
+        public string? PackAuthorizerArn { get; set; }
     }
 
-    private static string BuildSwagger(string stageName, string authorizerArn, List<ApiPack> packs)
+    // ------------------------------------------------
+    // API-ONLY SAM TEMPLATE GENERATOR
+    // ------------------------------------------------
+    public class ApiOnlySamTemplateGenerator
     {
-        // We embed stageName only for info; API GW uses StageName from SAM.
-        // AuthorizerUri for REST API custom authorizer:
-        // arn:aws:apigateway:{region}:lambda:path/2015-03-31/functions/{lambdaArn}/invocations
-        var sb = new StringBuilder();
-
-        sb.AppendLine("        swagger: '2.0'");
-        sb.AppendLine("        info:");
-        sb.AppendLine("          version: '1.0'");
-        sb.AppendLine($"          title: 'Generated API ({stageName})'");
-        sb.AppendLine("        schemes:");
-        sb.AppendLine("          - https");
-        sb.AppendLine("        consumes:");
-        sb.AppendLine("          - application/json");
-        sb.AppendLine("        produces:");
-        sb.AppendLine("          - application/json");
-        sb.AppendLine("        securityDefinitions:");
-        sb.AppendLine("          LambdaAuth:");
-        sb.AppendLine("            type: apiKey");
-        sb.AppendLine("            name: Authorization");
-        sb.AppendLine("            in: header");
-        sb.AppendLine("            x-amazon-apigateway-authtype: custom");
-        sb.AppendLine("            x-amazon-apigateway-authorizer:");
-        sb.AppendLine("              type: token");
-        sb.AppendLine("              identitySource: method.request.header.Authorization");
-        sb.AppendLine("              authorizerResultTtlInSeconds: 0");
-        sb.AppendLine($"              authorizerUri: !Sub 'arn:aws:apigateway:${{AWS::Region}}:lambda:path/2015-03-31/functions/{authorizerArn}/invocations'");
-        sb.AppendLine("        paths:");
-
-        foreach (var p in packs)
+        public string Generate(
+            string apiName,
+            string stageName,
+            string authorizerArn,
+            List<ParsedPack> packs)
         {
-            var basePath = "/" + p.BasePath.Trim().Trim('/');
+            const string apiLogicalId = "MultiTableApi";
 
-            // POST /base
-            sb.AppendLine($"          {basePath}:");
-            sb.AppendLine("            options:");
-            sb.AppendLine("              x-amazon-apigateway-integration:");
-            sb.AppendLine("                type: mock");
-            sb.AppendLine("                requestTemplates:");
-            sb.AppendLine("                  application/json: '{\"statusCode\": 200}'");
-            sb.AppendLine("                responses:");
-            sb.AppendLine("                  default:");
-            sb.AppendLine("                    statusCode: '200'");
-            sb.AppendLine("              responses:");
-            sb.AppendLine("                '200':");
-            sb.AppendLine("                  description: CORS preflight");
-            sb.AppendLine("            post:");
-            sb.AppendLine("              security:");
-            sb.AppendLine("                - LambdaAuth: []");
-            sb.AppendLine("              responses:");
-            sb.AppendLine("                '200': { description: OK }");
-            sb.AppendLine("              x-amazon-apigateway-integration:");
-            sb.AppendLine($"                uri: !Sub 'arn:aws:apigateway:${{AWS::Region}}:lambda:path/2015-03-31/functions/{p.CreateArn}/invocations'");
-            sb.AppendLine("                httpMethod: POST");
-            sb.AppendLine("                type: aws_proxy");
+            var pathsYaml = BuildPathsYaml(packs);
+            var permsYaml = BuildPermissionsYaml(apiLogicalId, authorizerArn, packs);
 
-            // GET /base
-            sb.AppendLine("            get:");
-            sb.AppendLine("              security:");
-            sb.AppendLine("                - LambdaAuth: []");
-            sb.AppendLine("              responses:");
-            sb.AppendLine("                '200': { description: OK }");
-            sb.AppendLine("              x-amazon-apigateway-integration:");
-            sb.AppendLine($"                uri: !Sub 'arn:aws:apigateway:${{AWS::Region}}:lambda:path/2015-03-31/functions/{p.GetListArn}/invocations'");
-            sb.AppendLine("                httpMethod: POST");
-            sb.AppendLine("                type: aws_proxy");
+            var yaml = $@"
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: API-only SAM template. Attaches existing Lambda ARNs with a Lambda Authorizer.
 
-            // GET/PUT/DELETE /base/{id}
-            var idPath = $"{basePath}/{{id}}";
-            sb.AppendLine($"          {idPath}:");
-            sb.AppendLine("            options:");
-            sb.AppendLine("              x-amazon-apigateway-integration:");
-            sb.AppendLine("                type: mock");
-            sb.AppendLine("                requestTemplates:");
-            sb.AppendLine("                  application/json: '{\"statusCode\": 200}'");
-            sb.AppendLine("                responses:");
-            sb.AppendLine("                  default:");
-            sb.AppendLine("                    statusCode: '200'");
-            sb.AppendLine("              responses:");
-            sb.AppendLine("                '200':");
-            sb.AppendLine("                  description: CORS preflight");
-            sb.AppendLine("            get:");
-            sb.AppendLine("              security:");
-            sb.AppendLine("                - LambdaAuth: []");
-            sb.AppendLine("              responses:");
-            sb.AppendLine("                '200': { description: OK }");
-            sb.AppendLine("              x-amazon-apigateway-integration:");
-            sb.AppendLine($"                uri: !Sub 'arn:aws:apigateway:${{AWS::Region}}:lambda:path/2015-03-31/functions/{p.GetOneArn}/invocations'");
-            sb.AppendLine("                httpMethod: POST");
-            sb.AppendLine("                type: aws_proxy");
+Resources:
+  {apiLogicalId}:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: {Q(apiName)}
+      StageName: {Q(stageName)}
+      EndpointConfiguration: REGIONAL
+      Cors:
+        AllowMethods: ""'GET,POST,PUT,DELETE,OPTIONS'""
+        AllowHeaders: ""'Content-Type,Authorization,X-Requested-With'""
+        AllowOrigin: ""'*'""
+      DefinitionBody:
+        openapi: 3.0.1
+        info:
+          title: {Q(apiName)}
+          version: '1.0'
+        components:
+          securitySchemes:
+            LambdaAuth:
+              type: apiKey
+              name: Authorization
+              in: header
+              x-amazon-apigateway-authorizer:
+                type: request
+                identitySource: method.request.header.Authorization
+                authorizerUri:
+                  Fn::Sub: arn:aws:apigateway:${{AWS::Region}}:lambda:path/2015-03-31/functions/{authorizerArn}/invocations
+                authorizerResultTtlInSeconds: 0
+        security:
+          - LambdaAuth: []
+        paths:
+{Indent(pathsYaml, 10)}
 
-            sb.AppendLine("            put:");
-            sb.AppendLine("              security:");
-            sb.AppendLine("                - LambdaAuth: []");
-            sb.AppendLine("              responses:");
-            sb.AppendLine("                '200': { description: OK }");
-            sb.AppendLine("              x-amazon-apigateway-integration:");
-            sb.AppendLine($"                uri: !Sub 'arn:aws:apigateway:${{AWS::Region}}:lambda:path/2015-03-31/functions/{p.UpdateDeleteArn}/invocations'");
-            sb.AppendLine("                httpMethod: POST");
-            sb.AppendLine("                type: aws_proxy");
+{permsYaml}
 
-            // DELETE /base/{id}/permanent
-            var permPath = $"{basePath}/{{id}}/permanent";
-            sb.AppendLine($"          {permPath}:");
-            sb.AppendLine("            options:");
-            sb.AppendLine("              x-amazon-apigateway-integration:");
-            sb.AppendLine("                type: mock");
-            sb.AppendLine("                requestTemplates:");
-            sb.AppendLine("                  application/json: '{\"statusCode\": 200}'");
-            sb.AppendLine("                responses:");
-            sb.AppendLine("                  default:");
-            sb.AppendLine("                    statusCode: '200'");
-            sb.AppendLine("              responses:");
-            sb.AppendLine("                '200':");
-            sb.AppendLine("                  description: CORS preflight");
-            sb.AppendLine("            delete:");
-            sb.AppendLine("              security:");
-            sb.AppendLine("                - LambdaAuth: []");
-            sb.AppendLine("              responses:");
-            sb.AppendLine("                '200': { description: OK }");
-            sb.AppendLine("              x-amazon-apigateway-integration:");
-            sb.AppendLine($"                uri: !Sub 'arn:aws:apigateway:${{AWS::Region}}:lambda:path/2015-03-31/functions/{p.DeletePermanentArn}/invocations'");
-            sb.AppendLine("                httpMethod: POST");
-            sb.AppendLine("                type: aws_proxy");
+Outputs:
+  ApiUrl:
+    Description: Base URL for this API
+    Value:
+      Fn::Sub: https://${{{apiLogicalId}}}.execute-api.${{AWS::Region}}.amazonaws.com/{stageName}
+".TrimStart();
+
+            return yaml;
         }
 
-        return sb.ToString();
-    }
-
-    private static string BuildLambdaPermissions(string apiLogicalName, string stageName, string authorizerArn, List<ApiPack> packs)
-    {
-        var sb = new StringBuilder();
-        sb.AppendLine("  # ------------------------------------------------");
-        sb.AppendLine("  # Lambda invoke permissions for API Gateway");
-        sb.AppendLine("  # ------------------------------------------------");
-
-        // Authorizer permission (allow API Gateway to invoke authorizer)
-        sb.AppendLine($"  {apiLogicalName}AuthorizerInvokePermission:");
-        sb.AppendLine("    Type: AWS::Lambda::Permission");
-        sb.AppendLine("    Properties:");
-        sb.AppendLine("      Action: lambda:InvokeFunction");
-        sb.AppendLine($"      FunctionName: '{authorizerArn}'");
-        sb.AppendLine("      Principal: apigateway.amazonaws.com");
-        sb.AppendLine($"      SourceArn: !Sub 'arn:aws:execute-api:${{AWS::Region}}:${{AWS::AccountId}}:${{{apiLogicalName}}}/*/*/*'");
-
-        int i = 1;
-        foreach (var p in packs)
+        // ------------------------------------------------
+        // PATHS (USES REAL RESOURCE NAMES)
+        // ------------------------------------------------
+        private static string BuildPathsYaml(List<ParsedPack> packs)
         {
-            var basePath = p.BasePath.Trim().Trim('/');
-            var packId = SafeLogicalId(p.PackName);
+            var sb = new StringBuilder();
 
-            // Create
-            AddPerm(sb, apiLogicalName, $"Pack{i}{packId}CreatePerm", p.CreateArn,
-                $"arn:aws:execute-api:${{AWS::Region}}:${{AWS::AccountId}}:${{{apiLogicalName}}}/*/POST/{basePath}");
+            foreach (var p in packs)
+            {
+                // Priority:
+                // 1) ResourceName (your desired real name)
+                // 2) BasePath (fallback)
+                var basePath = ResolveBasePath(p);
 
-            // GetList
-            AddPerm(sb, apiLogicalName, $"Pack{i}{packId}GetListPerm", p.GetListArn,
-                $"arn:aws:execute-api:${{AWS::Region}}:${{AWS::AccountId}}:${{{apiLogicalName}}}/*/GET/{basePath}");
+                // /resource
+                sb.AppendLine($"{basePath}:");
+                AddOptions(sb);
+                AddMethod(sb, "post", p.CreateArn);
+                AddMethod(sb, "get", p.GetListArn);
 
-            // GetOne
-            AddPerm(sb, apiLogicalName, $"Pack{i}{packId}GetOnePerm", p.GetOneArn,
-                $"arn:aws:execute-api:${{AWS::Region}}:${{AWS::AccountId}}:${{{apiLogicalName}}}/*/GET/{basePath}/*");
+                // /resource/{id}
+                sb.AppendLine($"{basePath}/{{id}}:");
+                AddOptions(sb);
+                AddMethod(sb, "get", p.GetOneArn);
+                AddMethod(sb, "put", p.UpdateDeleteArn);
+                AddMethod(sb, "delete", p.UpdateDeleteArn);
 
-            // Update
-            AddPerm(sb, apiLogicalName, $"Pack{i}{packId}UpdatePerm", p.UpdateDeleteArn,
-                $"arn:aws:execute-api:${{AWS::Region}}:${{AWS::AccountId}}:${{{apiLogicalName}}}/*/PUT/{basePath}/*");
+                // /resource/{id}/permanent
+                sb.AppendLine($"{basePath}/{{id}}/permanent:");
+                AddOptions(sb);
+                AddMethod(sb, "delete", p.DeletePermanentArn);
+            }
 
-            // DeletePermanent
-            AddPerm(sb, apiLogicalName, $"Pack{i}{packId}DeletePermanentPerm", p.DeletePermanentArn,
-                $"arn:aws:execute-api:${{AWS::Region}}:${{AWS::AccountId}}:${{{apiLogicalName}}}/*/DELETE/{basePath}/*/permanent");
-
-            i++;
+            return sb.ToString().TrimEnd();
         }
 
-        return sb.ToString();
-    }
+        private static string ResolveBasePath(ParsedPack p)
+        {
+            // If ResourceName is provided, it becomes the path: /{ResourceName}
+            var rn = (p.ResourceName ?? "").Trim().Trim('/');
 
-    private static void AddPerm(StringBuilder sb, string apiLogicalName, string logicalId, string functionArn, string sourceArnSub)
-    {
-        sb.AppendLine($"  {SafeLogicalId(logicalId)}:");
-        sb.AppendLine("    Type: AWS::Lambda::Permission");
-        sb.AppendLine("    Properties:");
-        sb.AppendLine("      Action: lambda:InvokeFunction");
-        sb.AppendLine($"      FunctionName: '{functionArn}'");
-        sb.AppendLine("      Principal: apigateway.amazonaws.com");
-        sb.AppendLine($"      SourceArn: !Sub '{sourceArnSub}'");
-    }
+            if (!string.IsNullOrWhiteSpace(rn))
+                return "/" + rn;
 
-    private static string SafeLogicalId(string s)
-    {
-        if (string.IsNullOrWhiteSpace(s)) return "X";
-        var cleaned = new string(s.Where(char.IsLetterOrDigit).ToArray());
-        return string.IsNullOrWhiteSpace(cleaned) ? "X" : cleaned;
+            // Else fall back to BasePath (must be /something)
+            var bp = (p.BasePath ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(bp))
+                throw new Exception("Each pack requires ResourceName (preferred) or BasePath.");
+
+            if (!bp.StartsWith("/")) bp = "/" + bp;
+            return bp;
+        }
+
+        private static void AddOptions(StringBuilder sb)
+        {
+            sb.AppendLine("  options:");
+            sb.AppendLine("    x-amazon-apigateway-integration:");
+            sb.AppendLine("      type: mock");
+            sb.AppendLine("      requestTemplates:");
+            sb.AppendLine("        application/json: '{\"statusCode\": 200}'");
+            sb.AppendLine("      responses:");
+            sb.AppendLine("        default:");
+            sb.AppendLine("          statusCode: '200'");
+            sb.AppendLine("      passthroughBehavior: when_no_match");
+        }
+
+        private static void AddMethod(StringBuilder sb, string method, string lambdaArn)
+        {
+            sb.AppendLine($"  {method}:");
+            sb.AppendLine("    security:");
+            sb.AppendLine("      - LambdaAuth: []");
+            sb.AppendLine("    x-amazon-apigateway-integration:");
+            sb.AppendLine("      httpMethod: POST");
+            sb.AppendLine("      type: aws_proxy");
+            sb.AppendLine("      uri:");
+            sb.AppendLine(
+                $"        Fn::Sub: arn:aws:apigateway:${{AWS::Region}}:lambda:path/2015-03-31/functions/{lambdaArn}/invocations");
+        }
+
+        // ------------------------------------------------
+        // PERMISSIONS
+        // ------------------------------------------------
+        private static string BuildPermissionsYaml(
+            string apiLogicalId,
+            string authorizerArn,
+            List<ParsedPack> packs)
+        {
+            var sb = new StringBuilder();
+
+            sb.AppendLine("  AuthorizerInvokePermission:");
+            sb.AppendLine("    Type: AWS::Lambda::Permission");
+            sb.AppendLine("    Properties:");
+            sb.AppendLine("      Action: lambda:InvokeFunction");
+            sb.AppendLine($"      FunctionName: {Q(authorizerArn)}");
+            sb.AppendLine("      Principal: apigateway.amazonaws.com");
+            sb.AppendLine("      SourceArn:");
+            sb.AppendLine($"        Fn::Sub: arn:aws:execute-api:${{AWS::Region}}:${{AWS::AccountId}}:${{{apiLogicalId}}}/*/*/*");
+
+            int i = 1;
+            foreach (var p in packs)
+            {
+                AddPerm(sb, $"Pack{i}CreatePerm", apiLogicalId, p.CreateArn);
+                AddPerm(sb, $"Pack{i}GetListPerm", apiLogicalId, p.GetListArn);
+                AddPerm(sb, $"Pack{i}GetOnePerm", apiLogicalId, p.GetOneArn);
+                AddPerm(sb, $"Pack{i}UpdateDeletePerm", apiLogicalId, p.UpdateDeleteArn);
+                AddPerm(sb, $"Pack{i}DeletePermanentPerm", apiLogicalId, p.DeletePermanentArn);
+                i++;
+            }
+
+            return sb.ToString();
+        }
+
+        private static void AddPerm(
+            StringBuilder sb,
+            string logicalId,
+            string apiLogicalId,
+            string functionArn)
+        {
+            sb.AppendLine($"  {logicalId}:");
+            sb.AppendLine("    Type: AWS::Lambda::Permission");
+            sb.AppendLine("    Properties:");
+            sb.AppendLine("      Action: lambda:InvokeFunction");
+            sb.AppendLine($"      FunctionName: {Q(functionArn)}");
+            sb.AppendLine("      Principal: apigateway.amazonaws.com");
+            sb.AppendLine("      SourceArn:");
+            sb.AppendLine($"        Fn::Sub: arn:aws:execute-api:${{AWS::Region}}:${{AWS::AccountId}}:${{{apiLogicalId}}}/*/*/*");
+        }
+
+        // ------------------------------------------------
+        // HELPERS
+        // ------------------------------------------------
+        private static string Q(string value)
+            => $"\"{(value ?? "").Replace("\"", "\\\"")}\"";
+
+        private static string Indent(string text, int spaces)
+        {
+            var pad = new string(' ', spaces);
+            return string.Join("\n", text.Split('\n').Select(l => pad + l));
+        }
     }
 }

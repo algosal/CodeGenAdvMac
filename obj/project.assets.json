@@ -2108,11 +2108,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv/CodeGenAdv.csproj",
+      "projectUniqueName": "/Users/salmansaeed/vscode/CodeGenAdv/CodeGenAdv.csproj",
       "projectName": "CodeGenAdv",
-      "projectPath": "/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv/CodeGenAdv.csproj",
+      "projectPath": "/Users/salmansaeed/vscode/CodeGenAdv/CodeGenAdv.csproj",
       "packagesPath": "/Users/salmansaeed/.nuget/packages/",
-      "outputPath": "/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv/obj/",
+      "outputPath": "/Users/salmansaeed/vscode/CodeGenAdv/obj/",
       "projectStyle": "PackageReference",
       "crossTargeting": true,
       "configFilePaths": [

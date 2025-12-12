@@ -2,112 +2,120 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace CodeGenApp.Services;
 
-public static class AwsOutputsParser
+public record CfnOutput(string OutputKey, string OutputValue);
+
+public static class LogicalName
 {
-    // Matches AWS CLI describe-stacks --query "Stacks[0].Outputs" JSON
-    private sealed class AwsOutputItem
+    // Keep only letters/digits; ensure it starts with a letter for CloudFormation logical IDs
+    public static string Sanitize(string input)
     {
-        public string? OutputKey { get; set; }
-        public string? OutputValue { get; set; }
+        var raw = (input ?? "").Trim();
+        if (raw.Length == 0) return "Resource";
+
+        var cleaned = new string(raw.Where(char.IsLetterOrDigit).ToArray());
+        if (cleaned.Length == 0) cleaned = "Resource";
+
+        if (!char.IsLetter(cleaned[0]))
+            cleaned = "R" + cleaned;
+
+        return cleaned;
     }
+}
 
-    public sealed record ResourceArns(
-        string Name,
-        string CreateArn,
-        string GetListArn,
-        string GetOneArn,
-        string UpdateDeleteArn,
-        string DeletePermanentArn,
-        string? AuthorizerArn // optional (you can also pass authorizer separately)
-    );
-
+public static class OutputsParser
+{
     /// <summary>
-    /// Parses a single stack's Outputs JSON array.
-    /// Robust against accidental terminal noise like "(END)" or duplicated trailing text,
-    /// by trimming everything before the first '[' and after the last ']'.
+    /// Robust parser for AWS CLI "Stacks[0].Outputs" JSON.
+    /// Accepts either:
+    ///  - exact JSON array
+    ///  - user paste that includes extra text before/after
+    /// It extracts the first JSON array from the text and parses that.
     /// </summary>
-    public static ResourceArns ParseSingleTableOutputs(
-        string awsOutputsJson,
-        string resourceName // e.g. "CGAdv"
-    )
+    public static List<CfnOutput> Parse(string pastedText)
     {
-        if (string.IsNullOrWhiteSpace(awsOutputsJson))
-            throw new ArgumentException("AWS outputs JSON is empty.");
+        if (string.IsNullOrWhiteSpace(pastedText))
+            throw new Exception("Outputs JSON is empty.");
 
-        // ---- Robust cleanup: keep only the JSON array portion ----
-        var cleaned = ExtractJsonArray(awsOutputsJson);
+        var jsonArrayText = ExtractFirstJsonArray(pastedText);
 
-        List<AwsOutputItem>? items;
         try
         {
-            items = JsonSerializer.Deserialize<List<AwsOutputItem>>(
-                cleaned,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            );
+            using var doc = JsonDocument.Parse(jsonArrayText);
+
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+                throw new Exception("Outputs JSON must be a JSON array.");
+
+            var list = new List<CfnOutput>();
+
+            foreach (var el in doc.RootElement.EnumerateArray())
+            {
+                var key = el.TryGetProperty("OutputKey", out var k) ? (k.GetString() ?? "") : "";
+                var val = el.TryGetProperty("OutputValue", out var v) ? (v.GetString() ?? "") : "";
+
+                if (!string.IsNullOrWhiteSpace(key) && !string.IsNullOrWhiteSpace(val))
+                    list.Add(new CfnOutput(key.Trim(), val.Trim()));
+            }
+
+            if (list.Count == 0)
+                throw new Exception("Outputs JSON parsed but contained no OutputKey/OutputValue pairs.");
+
+            return list;
         }
-        catch (Exception ex)
+        catch (JsonException jex)
         {
-            throw new InvalidOperationException(
-                "Could not parse AWS Outputs JSON. Paste the full JSON array from AWS CLI (Outputs). " +
-                "Tip: ensure it starts with '[' and ends with ']' (no '(END)' or extra lines).",
-                ex
-            );
+            throw new Exception("Invalid JSON. Paste the Outputs array exactly as returned by AWS CLI.", jex);
         }
+    }
 
-        if (items == null || items.Count == 0)
-            throw new InvalidOperationException("AWS Outputs JSON did not contain any items.");
+    public static string FindArnBySuffix(IEnumerable<CfnOutput> outputs, string suffix)
+    {
+        var match = outputs.FirstOrDefault(o =>
+            o.OutputKey.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
 
-        var dict = items
-            .Where(i => !string.IsNullOrWhiteSpace(i.OutputKey) && !string.IsNullOrWhiteSpace(i.OutputValue))
-            .ToDictionary(
-                i => i.OutputKey!.Trim(),
-                i => i.OutputValue!.Trim(),
-                StringComparer.OrdinalIgnoreCase
-            );
-
-        string GetRequiredArn(string keySuffix)
-        {
-            // Keys are like AGCodeGenLCreateArn, CGAdvLCreateArn, etc. => match by suffix
-            var match = dict.FirstOrDefault(kv => kv.Key.EndsWith(keySuffix, StringComparison.OrdinalIgnoreCase));
-            if (string.IsNullOrWhiteSpace(match.Value))
-                throw new InvalidOperationException($"Missing required OutputKey ending with '{keySuffix}'.");
-            return match.Value;
-        }
-
-        string? GetOptionalArn(string keySuffix)
-        {
-            var match = dict.FirstOrDefault(kv => kv.Key.EndsWith(keySuffix, StringComparison.OrdinalIgnoreCase));
-            return string.IsNullOrWhiteSpace(match.Value) ? null : match.Value;
-        }
-
-        return new ResourceArns(
-            Name: resourceName,
-            CreateArn: GetRequiredArn("CreateArn"),
-            GetListArn: GetRequiredArn("GetListArn"),
-            GetOneArn: GetRequiredArn("GetOneArn"),
-            UpdateDeleteArn: GetRequiredArn("UpdateDeleteArn"),
-            DeletePermanentArn: GetRequiredArn("DeletePermanentArn"),
-            AuthorizerArn: GetOptionalArn("AuthorizerArn")
-        );
+        return match?.OutputValue ?? "";
     }
 
     /// <summary>
-    /// Extracts the first JSON array found in the input by taking substring from first '[' to last ']'.
-    /// This prevents failures when the pasted text includes terminal noise like "(END)" or extra repeated blocks.
+    /// Extract the first JSON array found in a blob of text.
+    /// This fixes the exact problem you hit: "(END)" or duplicated output after the array.
     /// </summary>
-    private static string ExtractJsonArray(string input)
+    public static string ExtractFirstJsonArray(string text)
     {
-        var s = (input ?? "").Trim();
+        // Simple state machine: find first '[' then parse brackets until balanced.
+        int start = text.IndexOf('[');
+        if (start < 0)
+            throw new Exception("Could not find '[' to start a JSON array. Paste the AWS CLI Outputs JSON array.");
 
-        int start = s.IndexOf('[');
-        int end = s.LastIndexOf(']');
+        int depth = 0;
+        bool inString = false;
+        char prev = '\0';
 
-        if (start < 0 || end < 0 || end <= start)
-            throw new InvalidOperationException("Outputs JSON must contain a JSON array (start with '[' and end with ']').");
+        for (int i = start; i < text.Length; i++)
+        {
+            char c = text[i];
 
-        return s.Substring(start, end - start + 1).Trim();
+            if (c == '"' && prev != '\\')
+                inString = !inString;
+
+            if (!inString)
+            {
+                if (c == '[') depth++;
+                if (c == ']') depth--;
+
+                if (depth == 0)
+                {
+                    var slice = text.Substring(start, i - start + 1).Trim();
+                    return slice;
+                }
+            }
+
+            prev = c;
+        }
+
+        throw new Exception("Could not extract a complete JSON array. Ensure you pasted the full Outputs array.");
     }
 }

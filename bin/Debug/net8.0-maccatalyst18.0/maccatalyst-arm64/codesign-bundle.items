@@ -3,7 +3,7 @@
   <ItemGroup>
     <_CodesignBundle Include="CodeGenAdv.app">
       <CodesignSigningKey>-</CodesignSigningKey>
-      <CodesignEntitlements>/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv/obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/Entitlements.xcent</CodesignEntitlements>
+      <CodesignEntitlements>/Users/salmansaeed/vscode/CodeGenAdv/obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/Entitlements.xcent</CodesignEntitlements>
       <CodesignUseSecureTimestamp></CodesignUseSecureTimestamp>
       <CodesignAllocate>/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/codesign_allocate</CodesignAllocate>
       <RequireCodeSigning>false</RequireCodeSigning>
@@ -12,7 +12,7 @@
       <CodesignDisableTimestamp>true</CodesignDisableTimestamp>
       <CodesignKeychain></CodesignKeychain>
       <CodesignUseHardenedRuntime></CodesignUseHardenedRuntime>
-      <SourceProjectPath>/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv</SourceProjectPath>
+      <SourceProjectPath>/Users/salmansaeed/vscode/CodeGenAdv</SourceProjectPath>
     </_CodesignBundle>
   </ItemGroup>
 </Project>
