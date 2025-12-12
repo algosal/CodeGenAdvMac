@@ -1,11 +1,11 @@
 AreAnyAssembliesTrimmed=false
-				AssemblyName=CodeGenApp.dll
+				AssemblyName=CodeGenAdv.dll
 				
 				AOTCompiler=/usr/local/share/dotnet/packs/Microsoft.NETCore.App.Runtime.AOT.osx-arm64.Cross.maccatalyst-arm64/8.0.22/Sdk/../tools/mono-aot-cross
 				AOTOutputDirectory=obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/nativelibraries/aot-output/
 				DedupAssembly=obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/aot-instances.dll
-				AppBundleManifestPath=bin/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/CodeGenApp.app/Contents/Info.plist
-				CacheDirectory=/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenApp/obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/linker-cache
+				AppBundleManifestPath=bin/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/CodeGenAdv.app/Contents/Info.plist
+				CacheDirectory=/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv/obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/linker-cache
 				
 				Debug=true
 				DeploymentTarget=18.0
@@ -185,7 +185,7 @@ FrameworkAssembly=System.Private.CoreLib
 				IntermediateLinkDir=obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/linked/
 				InvariantGlobalization=false
 				HybridGlobalization=false
-				ItemsDirectory=/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenApp/obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/linker-items
+				ItemsDirectory=/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv/obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/linker-items
 				IsAppExtension=false
 				IsSimulatorBuild=False
 				LibMonoLinkMode=static
@@ -215,7 +215,7 @@ MonoLibrary=/usr/local/share/dotnet/packs/Microsoft.NETCore.App.Runtime.Mono.mac
 				PartialStaticRegistrarLibrary=/usr/local/share/dotnet/packs/Microsoft.MacCatalyst.Runtime.maccatalyst-arm64.net8.0_18.0/18.0.8319/runtimes/maccatalyst-arm64/native/Microsoft.MacCatalyst.registrar.a
 				Platform=MacCatalyst
 				PlatformAssembly=Microsoft.MacCatalyst.dll
-				RelativeAppBundlePath=../CodeGenApp.app/
+				RelativeAppBundlePath=../CodeGenAdv.app/
 				Registrar=
 				
 				RequireLinkWithAttributeForObjectiveCClassSearch=

@@ -1,16 +1,16 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <_PostProcessingItem Include="CodeGenApp.app/Contents/MacOS/CodeGenApp">
+    <_PostProcessingItem Include="CodeGenAdv.app/Contents/MacOS/CodeGenAdv">
       <IsAppExtension>false</IsAppExtension>
-      <BCSymbolMapName>CodeGenApp.bcsymbolmap</BCSymbolMapName>
+      <BCSymbolMapName>CodeGenAdv.bcsymbolmap</BCSymbolMapName>
       <NoDSymUtil>true</NoDSymUtil>
       <dSYMSourcePathExists>false</dSYMSourcePathExists>
       <NoSymbolStrip>true</NoSymbolStrip>
-      <dSYMInfoPlistRelativePath>CodeGenApp.app.dSYM\Contents\Info.plist</dSYMInfoPlistRelativePath>
-      <SymbolFile>/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenApp/obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/mtouch-symbols.list</SymbolFile>
-      <DSymName>CodeGenApp.app.dSYM</DSymName>
-      <SourceProjectPath>/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenApp</SourceProjectPath>
+      <dSYMInfoPlistRelativePath>CodeGenAdv.app.dSYM\Contents\Info.plist</dSYMInfoPlistRelativePath>
+      <SymbolFile>/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv/obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/mtouch-symbols.list</SymbolFile>
+      <DSymName>CodeGenAdv.app.dSYM</DSymName>
+      <SourceProjectPath>/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv</SourceProjectPath>
       <IsXPCService></IsXPCService>
     </_PostProcessingItem>
   </ItemGroup>

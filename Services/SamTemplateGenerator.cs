@@ -23,10 +23,9 @@ public class SamTemplateGenerator : ISamTemplateGenerator
         string safeBaseName,
         string safeTableName)
     {
-        // Ensure handler base is safe for Python module names (no hyphens).
+        // Make handler base safe for Python module names
         var handlerBase = safeBaseName.Replace("-", string.Empty);
 
-        // Handlers are based on filenames without .py
         var createHandler          = $"{handlerBase}_create.lambda_handler";
         var getListHandler         = $"{handlerBase}_get_list.lambda_handler";
         var updateDeleteHandler    = $"{handlerBase}_update_delete.lambda_handler";
@@ -35,14 +34,43 @@ public class SamTemplateGenerator : ISamTemplateGenerator
         var authorizerHandler      = $"{handlerBase}_authorizer.lambda_handler";
 
         var stackNameSuggestion = $"{safeTableName}-stack";
-        var apiLogicalName = $"{logicalBase}Api";
-        var pathSegment = safeBaseName.ToLowerInvariant();
+
+        // API + Authorizer name
+        var apiLogicalId = $"{logicalBase}Api";
+
+        // Base path for routes. Example: if logicalBase = "AGCodeGenL", you get /agcodegenl
+        // You can change this convention if you prefer a different prefix.
+        var basePath = "/" + safeBaseName.Trim().Trim('/');
+
+        // DynamoDB: define KeySchema/AttributeDefinitions depending on skName
+        var hasSk = !string.IsNullOrWhiteSpace(skName);
+
+        var attributeDefinitions = hasSk
+            ? $@"
+        AttributeDefinitions:
+          - AttributeName: {pkName}
+            AttributeType: S
+          - AttributeName: {skName}
+            AttributeType: S
+        KeySchema:
+          - AttributeName: {pkName}
+            KeyType: HASH
+          - AttributeName: {skName}
+            KeyType: RANGE"
+            : $@"
+        AttributeDefinitions:
+          - AttributeName: {pkName}
+            AttributeType: S
+        KeySchema:
+          - AttributeName: {pkName}
+            KeyType: HASH";
 
         var template = $@"
-# Auto-generated SAM template for table: {tableName}
+# Auto-generated SAM Template (API + Lambda + DynamoDB)
+# Stack suggestion: {stackNameSuggestion}
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: SAM stack for table {tableName}
+Description: API + Lambda + DynamoDB for table {tableName}
 
 Globals:
   Function:
@@ -54,27 +82,16 @@ Globals:
         TABLE_NAME: ""{tableName}""
 
 Resources:
+
   # ------------------------------------------------
-  # REST API (API Gateway v1) with CORS + Auth
+  # DynamoDB Table
   # ------------------------------------------------
-  {apiLogicalName}:
-    Type: AWS::Serverless::Api
+  {logicalBase}Table:
+    Type: AWS::DynamoDB::Table
     Properties:
-      Name: {logicalBase}RestApi
-      StageName: prod
-      Cors:
-        AllowMethods: ""'GET,POST,PUT,DELETE,OPTIONS'""
-        AllowHeaders: ""'Content-Type,Authorization,X-Requested-With'""
-        AllowOrigin: ""'*'""
-      Auth:
-        DefaultAuthorizer: LambdaAuth
-        AddDefaultAuthorizerToCorsPreflight: false
-        Authorizers:
-          LambdaAuth:
-            FunctionArn: !GetAtt {logicalBase}AuthorizerFunction.Arn
-            Identity:
-              Header: Authorization
-              ReauthorizeEvery: 0
+      TableName: {tableName}
+{attributeDefinitions}
+      BillingMode: PAY_PER_REQUEST
 
   # ------------------------------------------------
   # AUTHORIZER LAMBDA
@@ -93,7 +110,30 @@ Resources:
         - AWSLambdaBasicExecutionRole
 
   # ------------------------------------------------
-  # LAMBDAS
+  # API (SAM REST API) - Authorizer enforced here
+  # ------------------------------------------------
+  {apiLogicalId}:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: ""{safeBaseName}-api""
+      StageName: prod
+      Cors:
+        AllowMethods: ""'GET,POST,PUT,DELETE,OPTIONS'""
+        AllowHeaders: ""'Content-Type,Authorization,X-Requested-With'""
+        AllowOrigin: ""'*'""
+      Auth:
+        DefaultAuthorizer: LambdaAuth
+        Authorizers:
+          LambdaAuth:
+            FunctionArn: !GetAtt {logicalBase}AuthorizerFunction.Arn
+            FunctionPayloadType: REQUEST
+            Identity:
+              Headers:
+                - Authorization
+            AuthorizerResultTtlInSeconds: 0
+
+  # ------------------------------------------------
+  # CREATE
   # ------------------------------------------------
   {logicalBase}CreateFunction:
     Type: AWS::Serverless::Function
@@ -105,15 +145,18 @@ Resources:
             - Effect: Allow
               Action:
                 - dynamodb:PutItem
-              Resource: !Sub 'arn:aws:dynamodb:${{AWS::Region}}:${{AWS::AccountId}}:table/{tableName}'
+              Resource: !GetAtt {logicalBase}Table.Arn
       Events:
-        ApiPost:
+        CreateRoute:
           Type: Api
           Properties:
-            RestApiId: !Ref {apiLogicalName}
-            Path: /{pathSegment}
+            RestApiId: !Ref {apiLogicalId}
+            Path: {basePath}
             Method: POST
 
+  # ------------------------------------------------
+  # GET LIST
+  # ------------------------------------------------
   {logicalBase}GetListFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -128,16 +171,19 @@ Resources:
                 - dynamodb:GetItem
                 - dynamodb:DescribeTable
               Resource:
-                - !Sub 'arn:aws:dynamodb:${{AWS::Region}}:${{AWS::AccountId}}:table/{tableName}'
-                - !Sub 'arn:aws:dynamodb:${{AWS::Region}}:${{AWS::AccountId}}:table/{tableName}/index/*'
+                - !GetAtt {logicalBase}Table.Arn
+                - !Sub ""${{{logicalBase}Table.Arn}}/index/*""
       Events:
-        ApiGetList:
+        GetListRoute:
           Type: Api
           Properties:
-            RestApiId: !Ref {apiLogicalName}
-            Path: /{pathSegment}
+            RestApiId: !Ref {apiLogicalId}
+            Path: {basePath}
             Method: GET
 
+  # ------------------------------------------------
+  # GET ONE
+  # ------------------------------------------------
   {logicalBase}GetOneFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -151,16 +197,19 @@ Resources:
                 - dynamodb:Query
                 - dynamodb:DescribeTable
               Resource:
-                - !Sub 'arn:aws:dynamodb:${{AWS::Region}}:${{AWS::AccountId}}:table/{tableName}'
-                - !Sub 'arn:aws:dynamodb:${{AWS::Region}}:${{AWS::AccountId}}:table/{tableName}/index/*'
+                - !GetAtt {logicalBase}Table.Arn
+                - !Sub ""${{{logicalBase}Table.Arn}}/index/*""
       Events:
-        ApiGetOne:
+        GetOneRoute:
           Type: Api
           Properties:
-            RestApiId: !Ref {apiLogicalName}
-            Path: /{pathSegment}/{{id}}
+            RestApiId: !Ref {apiLogicalId}
+            Path: {basePath}/{{id}}
             Method: GET
 
+  # ------------------------------------------------
+  # UPDATE / SOFT DELETE
+  # ------------------------------------------------
   {logicalBase}UpdateDeleteFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -173,15 +222,24 @@ Resources:
                 - dynamodb:UpdateItem
                 - dynamodb:GetItem
                 - dynamodb:DescribeTable
-              Resource: !Sub 'arn:aws:dynamodb:${{AWS::Region}}:${{AWS::AccountId}}:table/{tableName}'
+              Resource: !GetAtt {logicalBase}Table.Arn
       Events:
-        ApiUpdate:
+        UpdateRoute:
           Type: Api
           Properties:
-            RestApiId: !Ref {apiLogicalName}
-            Path: /{pathSegment}/{{id}}
+            RestApiId: !Ref {apiLogicalId}
+            Path: {basePath}/{{id}}
             Method: PUT
+        SoftDeleteRoute:
+          Type: Api
+          Properties:
+            RestApiId: !Ref {apiLogicalId}
+            Path: {basePath}/{{id}}
+            Method: DELETE
 
+  # ------------------------------------------------
+  # PERMANENT DELETE
+  # ------------------------------------------------
   {logicalBase}DeletePermanentFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -194,19 +252,43 @@ Resources:
                 - dynamodb:DeleteItem
                 - dynamodb:GetItem
                 - dynamodb:DescribeTable
-              Resource: !Sub 'arn:aws:dynamodb:${{AWS::Region}}:${{AWS::AccountId}}:table/{tableName}'
+              Resource: !GetAtt {logicalBase}Table.Arn
       Events:
-        ApiDeletePermanent:
+        PermanentDeleteRoute:
           Type: Api
           Properties:
-            RestApiId: !Ref {apiLogicalName}
-            Path: /{pathSegment}/{{id}}/permanent
+            RestApiId: !Ref {apiLogicalId}
+            Path: {basePath}/{{id}}/permanent
             Method: DELETE
 
 Outputs:
   {logicalBase}ApiUrl:
-    Description: Base URL for the generated REST API
-    Value: !Sub 'https://${{{apiLogicalName}}}.execute-api.${{AWS::Region}}.amazonaws.com/prod'
+    Description: Base URL for this API
+    Value: !Sub ""https://${{{apiLogicalId}}}.execute-api.${{AWS::Region}}.amazonaws.com/prod""
+
+  {logicalBase}AuthorizerArn:
+    Description: ARN of the authorizer Lambda for {tableName}
+    Value: !GetAtt {logicalBase}AuthorizerFunction.Arn
+
+  {logicalBase}CreateArn:
+    Description: ARN of the CREATE Lambda for {tableName}
+    Value: !GetAtt {logicalBase}CreateFunction.Arn
+
+  {logicalBase}GetListArn:
+    Description: ARN of the GET LIST Lambda for {tableName}
+    Value: !GetAtt {logicalBase}GetListFunction.Arn
+
+  {logicalBase}GetOneArn:
+    Description: ARN of the GET ONE Lambda for {tableName}
+    Value: !GetAtt {logicalBase}GetOneFunction.Arn
+
+  {logicalBase}UpdateDeleteArn:
+    Description: ARN of the UPDATE/DELETE Lambda for {tableName}
+    Value: !GetAtt {logicalBase}UpdateDeleteFunction.Arn
+
+  {logicalBase}DeletePermanentArn:
+    Description: ARN of the PERMANENT DELETE Lambda for {tableName}
+    Value: !GetAtt {logicalBase}DeletePermanentFunction.Arn
 ";
 
         return template.TrimStart('\n', '\r');

@@ -6,9 +6,9 @@
 	<dict>
 		<key>output-files</key>
 		<array>
-			<string>/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenApp/obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/actool/bundle/Assets.car</string>
-			<string>/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenApp/obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/actool/bundle/appicon.icns</string>
-			<string>/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenApp/obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/actool/partial-info.plist</string>
+			<string>/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv/obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/actool/bundle/Assets.car</string>
+			<string>/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv/obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/actool/bundle/appicon.icns</string>
+			<string>/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv/obj/Debug/net8.0-maccatalyst18.0/maccatalyst-arm64/actool/partial-info.plist</string>
 		</array>
 	</dict>
 </dict>

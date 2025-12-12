@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "rQ8C3tImqCs=",
+  "dgSpecHash": "jTrg/dtmyi0=",
   "success": true,
-  "projectFilePath": "/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenApp/CodeGenApp.csproj",
+  "projectFilePath": "/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv/CodeGenAdv.csproj",
   "expectedPackageFiles": [
     "/Users/salmansaeed/.nuget/packages/microsoft.extensions.configuration/8.0.0/microsoft.extensions.configuration.8.0.0.nupkg.sha512",
     "/Users/salmansaeed/.nuget/packages/microsoft.extensions.configuration.abstractions/8.0.0/microsoft.extensions.configuration.abstractions.8.0.0.nupkg.sha512",

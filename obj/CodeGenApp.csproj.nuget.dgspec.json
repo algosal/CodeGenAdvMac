@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenApp/CodeGenApp.csproj": {}
+    "/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv/CodeGenApp.csproj": {}
   },
   "projects": {
-    "/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenApp/CodeGenApp.csproj": {
+    "/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv/CodeGenApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenApp/CodeGenApp.csproj",
+        "projectUniqueName": "/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv/CodeGenApp.csproj",
         "projectName": "CodeGenApp",
-        "projectPath": "/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenApp/CodeGenApp.csproj",
+        "projectPath": "/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv/CodeGenApp.csproj",
         "packagesPath": "/Users/salmansaeed/.nuget/packages/",
-        "outputPath": "/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenApp/obj/",
+        "outputPath": "/Users/salmansaeed/vscode/AWS-Coud-Coding/CodeGen/CodeGenAdv/obj/",
         "projectStyle": "PackageReference",
         "crossTargeting": true,
         "configFilePaths": [

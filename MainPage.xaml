@@ -2,96 +2,150 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="CodeGenApp.MainPage"
-             Title="CodeGen App">
+             Title="CodeGenAdv - API Template Builder">
 
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="12">
 
-            <!-- Root path status -->
             <Label x:Name="RootPathLabel"
                    Text="Root: (not set)"
                    FontSize="12"
                    TextColor="Gray" />
 
-            <BoxView HeightRequest="1"
-                     Color="LightGray"
-                     Margin="0,6" />
+            <BoxView HeightRequest="1" Color="LightGray" Margin="0,6" />
 
-            <!-- Table + key names -->
-            <Label Text="Table Name" />
-            <Entry x:Name="TableNameEntry"
-                   Placeholder="e.g. AGPlus" />
+            <Label Text="API-Only Template Builder (Attach Lambdas by ARN)"
+                   FontAttributes="Bold"
+                   FontSize="16" />
 
-            <Label Text="Partition Key (PK)" />
-            <Entry x:Name="PkNameEntry"
-                   Placeholder="e.g. vendorid" />
+            <!-- API meta -->
+            <Label Text="API Name (for display)" />
+            <Entry x:Name="ApiNameEntry"
+                   Placeholder="e.g. AlbaGold-MultiTable-API" />
 
-            <Label Text="Sort Key (optional)" />
-            <Entry x:Name="SkNameEntry"
-                   Placeholder="e.g. sk" />
+            <Label Text="Stage Name" />
+            <Entry x:Name="StageNameEntry"
+                   Placeholder="e.g. prod" />
 
-            <!-- On-demand vs provisioned -->
-            <HorizontalStackLayout Spacing="10" Margin="0,10,0,0">
-                <Label Text="On-Demand Billing" VerticalOptions="Center" />
-                <Switch x:Name="OnDemandSwitch" IsToggled="True" />
+            <BoxView HeightRequest="1" Color="LightGray" Margin="0,6" />
+
+            <!-- SIMPLE: Command Generator -->
+            <Label Text="AWS / SAM Commands (Copy-Paste Helper)"
+                   FontAttributes="Bold"
+                   FontSize="14" />
+
+            <Label Text="AWS Region (optional)" FontSize="12" />
+            <Entry x:Name="AwsRegionEntry"
+                   Placeholder="us-east-2 (optional)" />
+
+            <Label Text="CloudFormation Stack Name" FontSize="12" />
+            <Entry x:Name="StackNameEntry"
+                   Placeholder="e.g. alba-pack1-stack" />
+
+            <Label Text="Lambda Function Name (optional; used for ARN command)" FontSize="12" />
+            <Entry x:Name="LambdaNameEntry"
+                   Placeholder="e.g. MyFunction-ABC123" />
+
+            <HorizontalStackLayout Spacing="10">
+                <Button Text="Copy: Stack Outputs JSON command"
+                        Clicked="OnCopyDescribeOutputsCommandClicked" />
+                <Button Text="Copy: List Lambda names command"
+                        Clicked="OnCopyListLambdasCommandClicked" />
             </HorizontalStackLayout>
 
-            <BoxView HeightRequest="1"
-                     Color="LightGray"
-                     Margin="0,6" />
+            <HorizontalStackLayout Spacing="10">
+                <Button Text="Copy: Get Lambda ARN command"
+                        Clicked="OnCopyGetLambdaArnCommandClicked" />
+                <Button Text="Copy: sam build/deploy commands"
+                        Clicked="OnCopySamCommandsClicked" />
+            </HorizontalStackLayout>
 
-            <!-- Lambda base name -->
-            <Label Text="Base Lambda Name" />
-            <Entry x:Name="BaseLambdaEntry"
-                   Placeholder="e.g. agplus" />
+            <Editor x:Name="CommandsEditor"
+                    Text="Commands will appear here when you click a Copy button."
+                    IsReadOnly="True"
+                    AutoSize="TextChanges"
+                    HeightRequest="140"
+                    Margin="0,6,0,0" />
 
-            <!-- Existing API (optional) -->
-            <Label Text="Existing API URL or ID (optional)" />
-            <Entry x:Name="AppNameEntry"
-                   Placeholder="e.g. https://abc123.execute-api.us-east-2.amazonaws.com/prod or abc123" />
-
-            <Label Text="Leave empty to create a NEW API. 
-If you paste an existing API URL or ID, this table will ATTACH to that API."
+            <Label Text="Tip: paste commands into Terminal. If region is blank, your AWS CLI default region is used."
                    FontSize="10"
                    TextColor="Gray" />
 
-            <!-- Buttons -->
-            <Button Text="Generate DynamoDB Terraform"
-                    Margin="0,10,0,0"
-                    Clicked="OnGenerateDynamoClicked" />
+            <BoxView HeightRequest="1" Color="LightGray" Margin="0,6" />
 
-            <Button Text="Generate Lambda Python Files"
+            <!-- Authorizer -->
+            <Label Text="Authorizer Lambda ARN (required)" />
+            <Entry x:Name="AuthorizerArnEntry"
+                   Placeholder="arn:aws:lambda:us-east-2:123456789012:function:YourAuthorizerFunction" />
+
+            <Label Text="Note: You can copy Outputs JSON using the button above, then paste into Pack #1."
+                   FontSize="10"
+                   TextColor="Gray" />
+
+            <BoxView HeightRequest="1" Color="LightGray" Margin="0,6" />
+
+            <!-- Packs controls -->
+            <HorizontalStackLayout Spacing="10">
+                <Button Text="Add Pack" Clicked="OnAddPackClicked" />
+                <Button Text="Remove Last Pack" Clicked="OnRemovePackClicked" />
+            </HorizontalStackLayout>
+
+            <Label Text="Each Pack = One Table's Lambda Stack Outputs JSON"
+                   FontSize="10"
+                   TextColor="Gray" />
+
+            <!-- Packs list -->
+            <CollectionView x:Name="PacksCollectionView"
+                            ItemsSource="{Binding Packs}"
+                            Margin="0,6,0,0">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Frame Padding="12" Margin="0,6" BorderColor="LightGray">
+                            <VerticalStackLayout Spacing="8">
+
+                                <Label Text="{Binding Title}"
+                                       FontAttributes="Bold" />
+
+                                <Label Text="Base Path (API route prefix for this pack)"
+                                       FontSize="12" />
+                                <Entry Text="{Binding BasePath}"
+                                       Placeholder="e.g. /cgadv or /vendors" />
+
+                                <Label Text="CloudFormation Outputs JSON (paste array from CLI)"
+                                       FontSize="12" />
+                                <Editor Text="{Binding OutputsJson}"
+                                        AutoSize="TextChanges"
+                                        HeightRequest="160"
+                                        Placeholder='Paste this JSON:
+[
+  { "OutputKey": "XCreateArn", "OutputValue": "arn:..." },
+  ...
+]' />
+
+                                <Label Text="Expected OutputKeys end with:
+CreateArn, GetListArn, GetOneArn, UpdateDeleteArn, DeletePermanentArn
+(and optionally AuthorizerArn)"
+                                       FontSize="10"
+                                       TextColor="Gray" />
+
+                            </VerticalStackLayout>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <BoxView HeightRequest="1" Color="LightGray" Margin="0,10,0,0" />
+
+            <Button Text="Generate API-Only SAM Template (template-api.yaml)"
                     Margin="0,5,0,0"
-                    Clicked="OnGenerateLambdaClicked" />
-
-            <!-- CloudFormation helper -->
-            <BoxView HeightRequest="1"
-                     Color="LightGray"
-                     Margin="0,10,0,0" />
-
-            <Label Text="CloudFormation Stack Helper"
-                   FontAttributes="Bold"
-                   Margin="0,5,0,0" />
-
-            <Button Text="Show list-stacks commands"
-                    Margin="0,5,0,0"
-                    Clicked="OnShowListStacksCommandsClicked" />
-
-            <Label Text="Stack name to delete" />
-            <Entry x:Name="StackNameToDeleteEntry"
-                   Placeholder="e.g. AGStack-stack" />
-
-            <Button Text="Show delete-stack commands"
-                    Margin="0,5,0,0"
-                    Clicked="OnShowDeleteStackCommandsClicked" />
+                    Clicked="OnGenerateApiTemplateClicked" />
 
             <Editor x:Name="StatusEditor"
-                   Text="Ready."
-                   TextColor="Green"
-                   IsReadOnly="True"
-                   AutoSize="TextChanges"
-                   Focused="OnStatusEditorFocused"
-                   Margin="0,15,0,0" />
+                    Text="Ready."
+                    TextColor="Green"
+                    IsReadOnly="True"
+                    AutoSize="TextChanges"
+                    Margin="0,15,0,0" />
 
         </VerticalStackLayout>
     </ScrollView>
