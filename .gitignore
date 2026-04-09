@@ -1,48 +1,79 @@
-############################
-# OS / Editor junk
-############################
-.DS_Store
-*.swp
-*.swo
-
-.vscode/
-.idea/
+# =========================================================
+# .NET / MAUI / C#
+# =========================================================
+bin/
+obj/
 *.user
-*.userprefs
+*.rsuser
 *.suo
-
-############################
-# .NET / MAUI build output
-############################
-
-# Build directories
-[Bb]in/
-[Oo]bj/
-
-# VS build logs / caches
+*.userprefs
+*.csproj.user
 *.cache
 *.log
-*.vspscc
-*.vssscc
 
-# NuGet
-*.nupkg
-packages/
-.nuget/
-project.lock.json
-project.fragment.lock.json
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.vscode/
 
-# Rider / ReSharper
-_ReSharper*/
-*.DotSettings.user
+# =========================================================
+# macOS
+# =========================================================
+.DS_Store
+.AppleDouble
+.LSOverride
 
-############################
-# MacCatalyst AOT / native output
-############################
-# These all live under obj/ but listed for clarity; obj/ above already catches them.
-# Keeping in case you ever need to tweak patterns:
-# obj/**/nativelibraries/
-# obj/**/stripped/
-# obj/**/ref/
-# obj/**/refint/
-# obj/**/resourcestamps/
+# =========================================================
+# MAUI / iOS / Mac Catalyst
+# =========================================================
+**/Platforms/iOS/obj/
+**/Platforms/iOS/bin/
+**/Platforms/MacCatalyst/obj/
+**/Platforms/MacCatalyst/bin/
+**/Platforms/Android/obj/
+**/Platforms/Android/bin/
+
+# =========================================================
+# Python (generated Lambdas)
+# =========================================================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# =========================================================
+# AWS SAM
+# =========================================================
+.aws-sam/
+samconfig.toml
+
+# =========================================================
+# Terraform
+# =========================================================
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+terraform.tfvars.json
+
+# =========================================================
+# Secrets / Environment
+# =========================================================
+.env
+.env.*
+*.pem
+*.key
+*.crt
+
+# =========================================================
+# OS / Editor temp files
+# =========================================================
+*.swp
+*.tmp
+*.bak
+*.old
+# Extra explicit: build intermediates
+**/obj/
+**/bin/

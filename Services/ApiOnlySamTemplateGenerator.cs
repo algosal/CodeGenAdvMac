@@ -12,12 +12,10 @@ namespace CodeGenApp.Services
     {
         public string Title { get; set; } = "";
 
-        // "Real name" you want: vendors, stores, corporates, etc.
-        // MainPage.xaml.cs is already referencing this.
+        // Real API resource name: vendors, stores, corporates, etc.
         public string ResourceName { get; set; } = "";
 
-        // Kept for backward compatibility if older code is still setting BasePath.
-        // Example: /vendors
+        // Backward compatibility
         public string BasePath { get; set; } = "";
 
         public string CreateArn { get; set; } = "";
@@ -45,6 +43,9 @@ namespace CodeGenApp.Services
             var pathsYaml = BuildPathsYaml(packs);
             var permsYaml = BuildPermissionsYaml(apiLogicalId, authorizerArn, packs);
 
+            // IMPORTANT:
+            // - Use TOKEN authorizer for compatibility with most existing Lambda authorizers.
+            // - Add x-amazon-apigateway-authtype: custom so Console shows Authorization properly.
             var yaml = $@"
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
@@ -72,8 +73,9 @@ Resources:
               type: apiKey
               name: Authorization
               in: header
+              x-amazon-apigateway-authtype: custom
               x-amazon-apigateway-authorizer:
-                type: request
+                type: token
                 identitySource: method.request.header.Authorization
                 authorizerUri:
                   Fn::Sub: arn:aws:apigateway:${{AWS::Region}}:lambda:path/2015-03-31/functions/{authorizerArn}/invocations
@@ -104,9 +106,6 @@ Outputs:
 
             foreach (var p in packs)
             {
-                // Priority:
-                // 1) ResourceName (your desired real name)
-                // 2) BasePath (fallback)
                 var basePath = ResolveBasePath(p);
 
                 // /resource
@@ -133,13 +132,11 @@ Outputs:
 
         private static string ResolveBasePath(ParsedPack p)
         {
-            // If ResourceName is provided, it becomes the path: /{ResourceName}
             var rn = (p.ResourceName ?? "").Trim().Trim('/');
 
             if (!string.IsNullOrWhiteSpace(rn))
                 return "/" + rn;
 
-            // Else fall back to BasePath (must be /something)
             var bp = (p.BasePath ?? "").Trim();
             if (string.IsNullOrWhiteSpace(bp))
                 throw new Exception("Each pack requires ResourceName (preferred) or BasePath.");
@@ -150,6 +147,7 @@ Outputs:
 
         private static void AddOptions(StringBuilder sb)
         {
+            // No auth on OPTIONS to keep CORS clean.
             sb.AppendLine("  options:");
             sb.AppendLine("    x-amazon-apigateway-integration:");
             sb.AppendLine("      type: mock");
@@ -184,6 +182,10 @@ Outputs:
         {
             var sb = new StringBuilder();
 
+            // CRITICAL FIX:
+            // Lambda authorizers are invoked from:
+            // arn:aws:execute-api:region:account:apiId/authorizers/authorizerId
+            // Not from /*/*/*
             sb.AppendLine("  AuthorizerInvokePermission:");
             sb.AppendLine("    Type: AWS::Lambda::Permission");
             sb.AppendLine("    Properties:");
@@ -191,7 +193,7 @@ Outputs:
             sb.AppendLine($"      FunctionName: {Q(authorizerArn)}");
             sb.AppendLine("      Principal: apigateway.amazonaws.com");
             sb.AppendLine("      SourceArn:");
-            sb.AppendLine($"        Fn::Sub: arn:aws:execute-api:${{AWS::Region}}:${{AWS::AccountId}}:${{{apiLogicalId}}}/*/*/*");
+            sb.AppendLine($"        Fn::Sub: arn:aws:execute-api:${{AWS::Region}}:${{AWS::AccountId}}:${{{apiLogicalId}}}/authorizers/*");
 
             int i = 1;
             foreach (var p in packs)
